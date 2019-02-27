@@ -1,0 +1,114 @@
+---
+title: "Activity_Analysis"
+author: "Anish Raj"
+date: "27 February 2019"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Reproducible Research: Peer Assessment 1
+
+```{r, echo=TRUE, results='hide', warning=FALSE, message=FALSE}
+library(ggplot2)
+library(scales)
+library(Hmisc)
+library(lattice)
+```
+
+## Loading and preprocessing the data
+### 1. Load the data (i.e. read.csv())
+```{r, echo=TRUE, results='hide', warning=FALSE, message=FALSE}
+setwd("C:/Users/samsung/Desktop/Coursera/Module 5/Week2")
+fileurl <-"https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip"
+destfile <- "step_data.zip"
+download.file(fileurl,destfile)
+unzip(destfile)
+activity <- read.csv("activity.csv",sep=",")
+```
+
+### 2.Processing the data
+```{r, echo=TRUE}
+head(activity)
+names(activity)
+str(activity)
+```
+
+## Histogram of the total number of steps taken each day
+```{r, echo=TRUE}
+stepsbyday <- tapply(activity$steps,activity$date,sum,na.rm=TRUE)
+stepsbyday
+hist(stepsbyday,col = "green",xlab = "Total Steps",ylab = "Frequency",main = "Total Number of Steps per Day")
+```
+
+
+## Mean and median number of steps taken each day
+```{r, echo=TRUE,results='asis'}
+meanstepsbyday <- mean(stepsbyday)
+medianstesbyday <- median(stepsbyday)
+meanstepsbyday
+medianstesbyday
+
+```
+
+## Time Series plot of the average number of steps taken
+
+```{r, echo=TRUE,results='asis'}
+stepsbyinterval <- aggregate(steps~interval,activity,mean,na.rm=TRUE)
+plot(steps~interval, data=stepsbyinterval, type="l")
+```
+
+## Imputing missing data
+```{r, echo=TRUE,results='asis'}
+sumofNA <- sum(is.na(activity$steps))
+sumofNA
+
+getmeanstepsbyinterval <- function(interval){
+    stepsbyinterval[stepsbyinterval$interval==interval,]$steps 
+}
+activityDatanoNA <- activity
+for(i in 1:nrow(activity)){
+    if(is.na(activity[i,]$steps)) {
+        activityDatanoNA[i,]$steps <- getmeanstepsbyinterval(activityDatanoNA[i,]$interval)
+    }
+}
+
+totalstepsperdaynoNA <- tapply(activityDatanoNA$steps,activityDatanoNA$date,sum,na.rm=TRUE)
+```
+
+### Histogram of the total number of steps taken each day after missing values are imputed
+```{r, echo=TRUE,results='asis'}
+hist(totalstepsperdaynoNA,col = "green",xlab = "Total Steps",ylab = "Frequency",main = "Total Number of Steps per Day")
+
+meanstepsbydaynoNA <- mean(totalstepsperdaynoNA)
+medianstesbydaynoNA <- median(totalstepsperdaynoNA)
+meanstepsbydaynoNA
+medianstesbydaynoNA
+```
+
+### Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+
+```{r, echo=TRUE,results='asis'}
+activityDatanoNA$date <- as.Date(strptime(activityDatanoNA$date,format="%Y-%m-%d"))
+activityDatanoNA$day <- weekdays(activityDatanoNA$date)
+
+for (i in 1:nrow(activityDatanoNA)){
+    if(activityDatanoNA[i,]$day %in% c("Saturday","Sunday") ){
+        activityDatanoNA[i,]$day <- "Weekend" 
+    }
+    else{
+        activityDatanoNA[i,]$day <- "Weekday"
+    }
+}
+
+stepsbyweekdayweekend <- aggregate(activityDatanoNA$steps~activityDatanoNA$interval+activityDatanoNA$day,data=activityDatanoNA,mean,na.rm=TRUE)
+names(stepsbyweekdayweekend) <- c("Interval","Day","Steps")
+
+xyplot(Steps~Interval|Day,data=stepsbyweekdayweekend, type="l", layout=c(1,2),
+       xlab="Average")
+```
